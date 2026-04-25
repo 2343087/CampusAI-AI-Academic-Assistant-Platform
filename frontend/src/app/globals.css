@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-bg-deep: #030303;
+  --color-glass-bg: rgba(255, 255, 255, 0.03);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-accent-primary: #6366f1;
+}
+
+:root {
+  --bg-deep: #030303;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-bright: rgba(255, 255, 255, 0.15);
+  --accent-primary: #6366f1;
+  --accent-secondary: #a855f7;
+  --text-main: #ffffff;
+  --text-muted: #a1a1aa;
+}
+
+@layer base {
+  body {
+    @apply bg-[#030303] text-white antialiased selection:bg-indigo-500/30 overflow-x-hidden;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer components {
+  .premium-glass {
+    @apply bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.37)];
+  }
+
+  .premium-glass-hover {
+    @apply hover:bg-white/[0.06] hover:border-white/[0.15] hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-500;
+  }
+
+  .premium-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-white/40;
+  }
+
+  .accent-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400;
+  }
+
+  .primary-button {
+    @apply px-8 py-4 bg-white text-black rounded-2xl font-bold text-sm flex items-center justify-center gap-3 
+           hover:bg-zinc-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-[0_10px_40px_rgba(255,255,255,0.1)];
+  }
+
+  .secondary-button {
+    @apply px-8 py-4 bg-white/5 text-white border border-white/10 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 
+           hover:bg-white/10 hover:border-white/20 transition-all duration-300;
+  }
+
+  .glass-input {
+    @apply w-full bg-white/[0.03] border border-white/[0.08] rounded-2xl py-4 px-6 text-sm text-white placeholder:text-zinc-600
+           focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.05] transition-all duration-300;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* GSAP Hidden Class */
+.gsap-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+/* Three.js Background Container */
+#canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}

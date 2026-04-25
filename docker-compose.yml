@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: campusai_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  chroma:
+    image: chromadb/chroma:0.4.24
+    container_name: campusai_chroma
+    restart: always
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+  backend:
+    build: ./backend
+    container_name: campusai_backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-campusai}:${POSTGRES_PASSWORD:-password123}@host.docker.internal:5432/${POSTGRES_DB:-campusai_db}
+      REDIS_URL: redis://redis:6379/0
+      CHROMA_URL: http://chroma:8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+      - chroma
+    volumes:
+      - ./backend:/app
+
+  worker:
+    build: ./backend
+    container_name: campusai_worker
+    restart: always
+    command: celery -A app.core.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-campusai}:${POSTGRES_PASSWORD:-password123}@host.docker.internal:5432/${POSTGRES_DB:-campusai_db}
+      REDIS_URL: redis://redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+
+  frontend:
+    build: ./frontend
+    container_name: campusai_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  chroma_data:
