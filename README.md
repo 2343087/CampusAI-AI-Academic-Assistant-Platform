@@ -1,4 +1,4 @@
-# 🎓 CampusAI — AI Academic Assistant Platform (Apex V3.0)
+# 🎓 CampusAI — AI Academic Assistant Platform (Apex V3.1)
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -8,6 +8,9 @@
 > **"Bukan sekadar Chatbot FAQ biasa. Ini adalah *Operating System* Akademik buat Kampus lo."** 🚀
 
 Platform AI terpadu yang jadi "satu pintu" buat semua kebutuhan akademik mahasiswa, dosen, dan admin — dari ngecek jadwal kuliah, bedah draf skripsi, sampe simulasi KRS. Dibangun dengan arsitektur **Hybrid Logic (RAG + SQL)** yang bikin AI-nya gak cuma pinter ngomong, tapi juga paham *context* data dan *rules* kampus lo.
+
+### 🚀 LATEST UPDATE: Apex V3.1 (Dynamic Knowledge Engine)
+Kita baru aja nambahin sistem **Dynamic Metadata Management**. Admin sekarang bisa kelola Kategori, Prodi, Tahun, dan Prioritas langsung dari UI tanpa sentuh kode. Ini bikin RAG kita makin presisi — mahasiswa Hukum gak bakal dapet info aturan Teknik Informatika!
 
 ---
 
@@ -37,6 +40,7 @@ Kebanyakan kampus punya masalah **"Informasi Tersebar"**. Lo mau KRS-an buka web
 - **Embedding:** Hugging Face `all-MiniLM-L6-v2` (Offline Vectorization)
 - **Vector Database:** ChromaDB (Semantic Search)
 - **Relational Database:** PostgreSQL + SQLAlchemy (ORM)
+- **Dynamic Config:** JSON-based System Settings (Metadata Management)
 - **Task Queue:** Celery + Redis (Background Jobs)
 
 ---
@@ -45,7 +49,7 @@ Kebanyakan kampus punya masalah **"Informasi Tersebar"**. Lo mau KRS-an buka web
 
 1. **💬 Chat AI Hybrid**: Ngobrol sama asisten yang kenal siapa lo, tau IPK lo, dan hafal di luar kepala soal aturan kampus lo.
 2. **📊 Dashboard Akademik Personal**: *Tracker real-time* buat SKS, grafik IPK, dan Jadwal Kuliah hari ini.
-3. **📚 Basis Pengetahuan (Dev Console)**: Admin bisa upload *PDF* atau *Link URL* langsung dari CMS buat bikin AI makin pinter secara instan.
+3. **📚 Basis Pengetahuan Dinamis (Dev Console)**: Admin bisa kelola list Kategori, Prodi, dan Tahun secara mandiri. Ingest data via PDF, URL, CSV, atau ZIP dengan filtrasi metadata otomatis.
 4. **🔐 Role-Based Access Control (RBAC)**: Fitur dan akses dibatesin super ketat antara Mahasiswa, Dosen, dan Admin.
 5. **WhatsApp Gateway (Prep)**: Sistem udah disiapin buat ngirim notifikasi akademik (jadwal mepet, nilai keluar) ke WhatsApp.
 

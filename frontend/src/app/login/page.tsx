@@ -20,7 +20,22 @@ function LoginContent() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated()) {
+    if (isAuthenticated() && typeof window !== "undefined") {
+      const userStr = localStorage.getItem("dev_user");
+      if (userStr) {
+        try {
+          const userObj = JSON.parse(userStr);
+          const role = userObj.role?.toLowerCase();
+          if (role === "admin" || role === "developer") {
+            router.push("/dev-console");
+          } else if (role === "lecturer") {
+            router.push("/dashboard/lecturer");
+          } else {
+            router.push("/dashboard");
+          }
+          return;
+        } catch (e) {}
+      }
       router.push("/dashboard");
     }
   }, [token, router, isAuthenticated]);
@@ -42,8 +57,16 @@ function LoginContent() {
       
       setAuth(access_token, user);
       localStorage.setItem("dev_token", access_token);
+      localStorage.setItem("dev_user", JSON.stringify(user));
       
-      router.push("/dashboard");
+      const role = user.role?.toLowerCase();
+      if (role === "admin" || role === "developer") {
+        router.push("/dev-console");
+      } else if (role === "lecturer") {
+        router.push("/dashboard/lecturer");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       if (err.code === "ECONNABORTED") {
         setError("Koneksi ke server lambat. Silakan coba lagi.");

@@ -62,6 +62,24 @@ export default function DashboardPage() {
     }
   }, [data]);
 
+  if (error) {
+    // If user is developer or admin, redirect to dev-console since they don't have a student dashboard
+    if (user?.role === "developer" || user?.role === "admin") {
+      router.push("/dev-console");
+      return null;
+    }
+    return (
+      <div className="min-h-screen bg-[#030303] flex flex-col items-center justify-center p-6 text-center">
+        <AlertCircle className="w-16 h-16 text-red-500 mb-6" />
+        <h2 className="text-2xl font-bold text-white mb-2">Gagal Memuat Dashboard</h2>
+        <p className="text-zinc-400 mb-8 max-w-md">Terjadi kesalahan saat memuat data akademik Anda. Silakan coba lagi nanti atau hubungi administrator.</p>
+        <button onClick={() => window.location.reload()} className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold transition-all">
+          Coba Lagi
+        </button>
+      </div>
+    );
+  }
+
   if (!data)
     return (
       <div className="min-h-screen bg-[#030303] flex items-center justify-center">

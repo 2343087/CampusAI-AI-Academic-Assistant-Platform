@@ -190,13 +190,19 @@ class AIEngine:
         if intent in ("static", "hybrid"):
             prodi = personal_data["metadata"].get("prodi")
             try:
-                # Try prodi-specific first, fallback to all docs if nothing found
-                docs = vector_service.search(query, filter={"prodi": prodi} if prodi else None)
-                if not docs and prodi:
-                    docs = vector_service.search(query) # Fallback to general docs
+                # Construct filter for (User's Prodi OR 'umum')
+                search_filter = None
+                if prodi:
+                    search_filter = {"$or": [{"prodi": prodi}, {"prodi": "umum"}]}
                 
+                docs = vector_service.search(query, filter=search_filter)
                 if docs:
-                    static_context = "\n".join([f"Source: {d.metadata.get('source', 'Doc')}\nContent: {d.page_content}" for d in docs])
+                    static_context = "\n".join([
+                        f"Source: {d.metadata.get('source', 'Doc')} " + 
+                        (f"(Halaman {int(d.metadata.get('page')) + 1})" if d.metadata.get('page') is not None else "") +
+                        f"\nContent: {d.page_content}" 
+                        for d in docs
+                    ])
             except Exception as e:
                 print(f"⚠️ Vector search error: {str(e)}")
 
@@ -212,11 +218,12 @@ class AIEngine:
         Waktu sekarang: {current_time}.
         
         PRINSIP UTAMA:
-        1. Jawab berdasarkan CONTEXT di bawah.
-        2. Prioritaskan USER DATA (Data Mahasiswa) jika pertanyaan bersifat personal.
-        3. Gunakan UNIVERSITY KNOWLEDGE untuk aturan umum.
-        4. Jika data tidak ada di context, sampaikan bahwa kamu tidak memiliki akses ke info tersebut. JANGAN MENGARANG.
-        5. Ingat CHAT HISTORY untuk menjaga kelanjutan percakapan.
+        1. Jawaban WAJIB didasarkan pada CONTEXT di bawah.
+        2. Jika ada informasi di UNIVERSITY KNOWLEDGE (ChromaDB), gunakan itu sebagai sumber kebenaran utama untuk aturan kampus.
+        3. Prioritaskan USER DATA (Data Mahasiswa) hanya jika pertanyaan bersifat personal (seperti nilai atau jadwal sendiri).
+        4. Jika jawaban tidak ditemukan di CONTEXT, katakan dengan sopan bahwa kamu tidak memiliki informasi tersebut dalam basis pengetahuan saat ini. JANGAN PERNAH MENGARANG informasi.
+        5. Tampilkan sumber informasi (Source) jika tersedia di context.
+        6. Jaga alur percakapan berdasarkan CHAT HISTORY.
         
         CONTEXT:
         {combined_context or 'Tidak ada konteks tersedia.'}
@@ -263,11 +270,19 @@ class AIEngine:
         if intent in ("static", "hybrid"):
             prodi = personal_data["metadata"].get("prodi")
             try:
-                docs = vector_service.search(query, filter={"prodi": prodi} if prodi else None)
-                if not docs and prodi:
-                    docs = vector_service.search(query)
+                # Construct filter for (User's Prodi OR 'umum')
+                search_filter = None
+                if prodi:
+                    search_filter = {"$or": [{"prodi": prodi}, {"prodi": "umum"}]}
+                    
+                docs = vector_service.search(query, filter=search_filter)
                 if docs:
-                    static_context = "\n".join([f"Source: {d.metadata.get('source', 'Doc')}\nContent: {d.page_content}" for d in docs])
+                    static_context = "\n".join([
+                        f"Source: {d.metadata.get('source', 'Doc')} " + 
+                        (f"(Halaman {int(d.metadata.get('page')) + 1})" if d.metadata.get('page') is not None else "") +
+                        f"\nContent: {d.page_content}" 
+                        for d in docs
+                    ])
             except Exception as e:
                 print(f"⚠️ Vector search error: {str(e)}")
 
@@ -283,11 +298,12 @@ class AIEngine:
         Waktu sekarang: {current_time}.
         
         PRINSIP UTAMA:
-        1. Jawab berdasarkan CONTEXT di bawah.
-        2. Prioritaskan USER DATA (Data Mahasiswa) jika pertanyaan bersifat personal.
-        3. Gunakan UNIVERSITY KNOWLEDGE untuk aturan umum.
-        4. Jika data tidak ada di context, sampaikan bahwa kamu tidak memiliki akses ke info tersebut. JANGAN MENGARANG.
-        5. Ingat CHAT HISTORY untuk menjaga kelanjutan percakapan.
+        1. Jawaban WAJIB didasarkan pada CONTEXT di bawah.
+        2. Jika ada informasi di UNIVERSITY KNOWLEDGE (ChromaDB), gunakan itu sebagai sumber kebenaran utama untuk aturan kampus.
+        3. Prioritaskan USER DATA (Data Mahasiswa) hanya jika pertanyaan bersifat personal (seperti nilai atau jadwal sendiri).
+        4. Jika jawaban tidak ditemukan di CONTEXT, katakan dengan sopan bahwa kamu tidak memiliki informasi tersebut dalam basis pengetahuan saat ini. JANGAN PERNAH MENGARANG informasi.
+        5. Tampilkan sumber informasi (Source) jika tersedia di context.
+        6. Jaga alur percakapan berdasarkan CHAT HISTORY.
         
         CONTEXT:
         {combined_context or 'Tidak ada konteks tersedia.'}

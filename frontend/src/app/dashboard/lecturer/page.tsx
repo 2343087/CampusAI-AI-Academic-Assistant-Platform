@@ -41,8 +41,7 @@ export default function LecturerDashboard() {
     // Mock fetching for now, replace with real lecturer endpoint
     const fetchSubmissions = async () => {
       try {
-        // This would be a real endpoint like /api/thesis/lecturer/submissions
-        const response = await api.get("/thesis/1/history"); // Mocking with thesis 1
+        const response = await api.get("/thesis/lecturer/submissions");
         setSubmissions(response.data);
       } catch (err) {
         console.error(err);
@@ -57,7 +56,7 @@ export default function LecturerDashboard() {
     if (!selectedSub || !feedback) return;
     try {
       await api.post("/thesis/review", {
-        submission_id: selectedSub.id,
+        submission_id: selectedSub.submission_id,
         lecturer_feedback: feedback,
         status: "in_progress"
       });
@@ -125,10 +124,10 @@ export default function LecturerDashboard() {
             ) : (
               submissions.map((sub, i) => (
                 <motion.div
-                  key={sub.id}
+                  key={sub.submission_id}
                   onClick={() => setSelectedSub(sub)}
                   className={`group p-5 rounded-2xl border transition-all cursor-pointer ${
-                    selectedSub?.id === sub.id 
+                    selectedSub?.submission_id === sub.submission_id 
                     ? "bg-white/10 border-indigo-500/50" 
                     : "bg-white/[0.02] border-white/5 hover:border-white/20"
                   }`}
@@ -140,9 +139,9 @@ export default function LecturerDashboard() {
                       </div>
                       <div>
                         <h3 className="font-bold group-hover:text-indigo-400 transition-colors">
-                          Thesis Draft - Version {sub.version}
+                          {sub.thesis_title} - Version {sub.version}
                         </h3>
-                        <p className="text-sm text-zinc-500">Submitted by Student ID: 2343087</p>
+                        <p className="text-sm text-zinc-500">Submitted by: {sub.student_name} ({sub.student_nim})</p>
                       </div>
                     </div>
                     <div className="text-right text-xs text-zinc-600">

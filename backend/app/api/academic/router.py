@@ -42,7 +42,7 @@ async def get_student_dashboard(
 
     # 2. Parallel Fetching for the rest
     async def fetch_enrollments():
-        if not student: return [], 0, 0
+        if not student: return []
         enroll_stmt = (
             select(Enrollment, Course)
             .join(Course, Enrollment.course_id == Course.id)

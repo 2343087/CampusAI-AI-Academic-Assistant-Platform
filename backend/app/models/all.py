@@ -139,9 +139,12 @@ class Document(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     file_path = Column(String)
-    content_type = Column(String)  # pdf, csv, text
-    category = Column(String)  # peraturan, kurikulum, faq
+    content_type = Column(String)  # pdf, csv, text, url_web, url_youtube, zip
+    category = Column(String)  # peraturan, kurikulum, faq, beasiswa, skripsi, dosen, ormawa, layanan
     prodi = Column(String, nullable=True)  # null means universal
+    year = Column(Integer, nullable=True)
+    priority = Column(String, default="normal") # low, normal, high
+    chunk_count = Column(Integer, default=0)
     uploaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_processed = Column(Integer, default=0)  # 0: pending, 1: success, -1: failed
 
@@ -156,3 +159,70 @@ class Notification(Base):
     type = Column(String, default="info")  # info, warning, success, error
     is_read = Column(Integer, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class AttendanceSession(Base):
+    __tablename__ = "attendance_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("schedules.id"))
+    lecturer_id = Column(Integer, ForeignKey("lecturers.id"))
+    session_code = Column(String, unique=True, index=True)  # OTP code for the class
+    status = Column(String, default="active")  # active, closed
+    valid_until = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    schedule = relationship("Schedule")
+    lecturer = relationship("Lecturer")
+    records = relationship("AttendanceRecord", back_populates="session", cascade="all, delete-orphan")
+
+
+class AttendanceRecord(Base):
+    __tablename__ = "attendance_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("attendance_sessions.id"))
+    student_id = Column(Integer, ForeignKey("students.id"))
+    status = Column(String, default="present")  # present, late, excused, absent
+    submitted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    location_lat = Column(Float, nullable=True)
+    location_lng = Column(Float, nullable=True)
+
+    session = relationship("AttendanceSession", back_populates="records")
+    student = relationship("Student")
+
+
+class Ormawa(Base):
+    __tablename__ = "ormawas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    category = Column(String) # BEM, UKM, HIMA
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    members = relationship("OrmawaMember", back_populates="ormawa", cascade="all, delete-orphan")
+
+
+class OrmawaMember(Base):
+    __tablename__ = "ormawa_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ormawa_id = Column(Integer, ForeignKey("ormawas.id"))
+    student_id = Column(Integer, ForeignKey("students.id"))
+    role = Column(String, default="member") # president, secretary, member
+    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    ormawa = relationship("Ormawa", back_populates="members")
+    student = relationship("Student")
+
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True)  # e.g., 'knowledge_categories', 'knowledge_prodi'
+    value = Column(Text)  # JSON string
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+

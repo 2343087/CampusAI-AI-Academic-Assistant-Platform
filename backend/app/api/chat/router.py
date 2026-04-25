@@ -26,7 +26,11 @@ class ChatRequest(BaseModel):
 
 class IngestRequest(BaseModel):
     text: str
-    metadata: Optional[dict] = None
+    title: Optional[str] = None
+    category: str = "faq"
+    prodi: str = "umum"
+    year: Optional[int] = None
+    priority: str = "normal"
 
 
 async def classify_intent(message: str):
@@ -189,70 +193,109 @@ async def clear_chat_history(
 @router.post("/ingest/url")
 async def ingest_url(
     url: str,
+    category: str = "knowledge",
+    prodi: str = "umum",
+    year: Optional[int] = None,
+    priority: str = "normal",
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_role("admin", "developer")),
 ):
-    """Admin only — scrape a URL and add to RAG knowledge base."""
+    """Scrape a URL and add to RAG knowledge base with metadata."""
     import requests
     from bs4 import BeautifulSoup
     from app.services.ai.engine import clean_text
+    from app.models.all import Document
     
     try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        }
+
+        content_type = "url_web"
+        title = f"Web: {url[:30]}..."
+        clean_content = ""
+
         # Check if YouTube URL
         if "youtube.com" in url or "youtu.be" in url:
             from youtube_transcript_api import YouTubeTranscriptApi
-            import re
-            
-            # Extract video ID
             video_id = None
-            if "youtube.com/watch?v=" in url:
-                video_id = url.split("v=")[1].split("&")[0]
-            elif "youtu.be/" in url:
-                video_id = url.split("youtu.be/")[1].split("?")[0]
+            if "youtube.com/watch?v=" in url: video_id = url.split("v=")[1].split("&")[0]
+            elif "youtu.be/" in url: video_id = url.split("youtu.be/")[1].split("?")[0]
             
-            if not video_id:
-                raise Exception("ID Video YouTube tidak ditemukan")
+            if not video_id: raise Exception("ID Video YouTube tidak ditemukan")
             
             transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['id', 'en'])
             text = " ".join([t['text'] for t in transcript_list])
             clean_content = clean_text(text)
-            
-            count = await vector_service.add_documents(
-                [clean_content],
-                [{"source": url, "type": "youtube_transcript", "video_id": video_id}]
-            )
-            return {"status": "success", "url": url, "type": "youtube", "chunks_added": count}
+            content_type = "url_youtube"
+            title = f"YouTube: {video_id}"
+        else:
+            res = requests.get(url, headers=headers, timeout=15)
+            res.raise_for_status()
+            soup = BeautifulSoup(res.text, "html.parser")
+            for element in soup(["script", "style", "nav", "footer", "header"]): element.extract()
+            text = soup.get_text(separator=" ", strip=True)
+            clean_content = clean_text(text)
+            title = soup.title.string[:100] if soup.title else f"Web: {url[:30]}..."
 
-        # Standard Web Scrape
-        res = requests.get(url, timeout=10)
-        soup = BeautifulSoup(res.text, "html.parser")
-        
-        # Remove script/style elements
-        for script in soup(["script", "style"]):
-            script.extract()
-            
-        text = soup.get_text(separator=" ", strip=True)
-        clean_content = clean_text(text)
-        
-        count = await vector_service.add_documents(
-            [clean_content],
-            [{"source": url, "type": "web_scrape"}]
+        if len(clean_content) < 50:
+            raise Exception("Konten website terlalu pendek atau tidak dapat diakses.")
+
+        # Save to DB
+        db_doc = Document(
+            title=title, file_path=url, content_type=content_type,
+            category=category, prodi=prodi, year=year, priority=priority, is_processed=0
         )
-        return {"status": "success", "url": url, "type": "web", "chunks_added": count}
+        db.add(db_doc)
+        await db.commit()
+        await db.refresh(db_doc)
+
+        metadata = {
+            "document_id": db_doc.id, "source": url, "type": content_type,
+            "title": title, "prodi": prodi, "year": year, "priority": priority
+        }
+        chunks = await vector_service.add_documents([clean_content], [metadata])
+        
+        db_doc.is_processed = 1
+        db_doc.chunk_count = chunks
+        await db.commit()
+        
+        return {"status": "success", "chunks": chunks, "document_id": db_doc.id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Gagal mengambil data: {str(e)}")
 
 
 @router.post("/ingest")
 async def ingest_knowledge(
     request: IngestRequest,
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_role("admin", "developer")),
 ):
-    """Admin/Developer only — add knowledge to RAG vector store."""
+    """Add raw text knowledge to RAG."""
+    from app.models.all import Document
     try:
-        count = await vector_service.add_documents(
-            [request.text],
-            [request.metadata] if request.metadata else None,
+        title = request.title or f"Text: {request.text[:30]}..."
+        
+        db_doc = Document(
+            title=title, file_path="raw_text", content_type="text",
+            category=request.category, prodi=request.prodi,
+            year=request.year, priority=request.priority, is_processed=0
         )
-        return {"status": "success", "chunks_added": count}
+        db.add(db_doc)
+        await db.commit()
+        await db.refresh(db_doc)
+
+        metadata = {
+            "document_id": db_doc.id, "prodi": request.prodi, "type": "text",
+            "category": request.category, "year": request.year, "priority": request.priority
+        }
+        
+        chunks = await vector_service.add_documents([request.text], [metadata])
+        
+        db_doc.is_processed = 1
+        db_doc.chunk_count = chunks
+        await db.commit()
+        
+        return {"status": "success", "chunks": chunks, "document_id": db_doc.id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

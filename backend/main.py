@@ -13,10 +13,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.cms.router import router as cms_router
 from app.api.cms.document_router import router as doc_router
+from app.api.cms.settings_router import router as settings_router
 from app.api.chat.router import router as chat_router
 from app.api.auth.router import router as auth_router
 from app.api.academic.router import router as academic_router
 from app.api.academic.thesis_router import router as thesis_router
+from app.api.academic.attendance_router import router as attendance_router
+from app.api.academic.ormawa_router import router as ormawa_router
 from app.api.notifications.router import router as notification_router
 
 
@@ -63,8 +66,11 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(academic_router, prefix="/api")
 app.include_router(thesis_router, prefix="/api")
+app.include_router(attendance_router, prefix="/api")
+app.include_router(ormawa_router, prefix="/api")
 app.include_router(cms_router, prefix="/api")
 app.include_router(doc_router, prefix="/api/cms")
+app.include_router(settings_router, prefix="/api/cms")
 app.include_router(notification_router, prefix="/api")
 
 

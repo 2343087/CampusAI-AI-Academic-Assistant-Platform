@@ -16,6 +16,8 @@ class ThesisSubmit(BaseModel):
     content: str
 
 
+from app.tasks.academic_tasks import process_ai_thesis_review
+
 @router.post("/submit")
 async def submit_draft(
     request: ThesisSubmit,
@@ -36,14 +38,11 @@ async def submit_draft(
     existing_subs = sub_count_result.scalars().all()
     next_version = len(existing_subs) + 1
 
-    # 3. Get AI Feedback
-    ai_feedback = await thesis_reviewer.review_draft(request.content)
-
-    # 4. Save submission
+    # 3. Save submission initially with pending AI feedback
     new_submission = ThesisSubmission(
         thesis_id=request.thesis_id,
         content=request.content,
-        ai_feedback=ai_feedback,
+        ai_feedback="AI Review sedang diproses...",
         version=next_version,
     )
 
@@ -51,10 +50,13 @@ async def submit_draft(
     await db.commit()
     await db.refresh(new_submission)
 
+    # 4. Trigger Celery Task for background AI Review
+    process_ai_thesis_review.delay(new_submission.id, request.content)
+
     return {
         "status": "success",
         "version": new_submission.version,
-        "ai_feedback": ai_feedback,
+        "message": "Draft berhasil disubmit. Review AI sedang diproses di background.",
     }
 
 
@@ -112,5 +114,50 @@ async def get_thesis_history(
             "lecturer_feedback": s.lecturer_feedback,
             "created_at": s.created_at.isoformat() if s.created_at else None,
         }
-        for s in submissions
+    ]
+
+@router.get("/lecturer/submissions")
+async def get_lecturer_submissions(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role("lecturer", "admin", "developer")),
+):
+    """Get all thesis submissions assigned to the lecturer."""
+    from app.models.all import Lecturer, Student, User
+    
+    # 1. Get lecturer ID
+    res_lec = await db.execute(select(Lecturer).filter(Lecturer.user_id == current_user["id"]))
+    lecturer = res_lec.scalars().first()
+    if not lecturer and current_user["role"] == "lecturer":
+        raise HTTPException(status_code=404, detail="Profil dosen tidak ditemukan")
+
+    # 2. Get theses assigned to this lecturer
+    query = (
+        select(ThesisSubmission, Thesis, Student, User)
+        .join(Thesis, ThesisSubmission.thesis_id == Thesis.id)
+        .join(Student, Thesis.student_id == Student.id)
+        .join(User, Student.user_id == User.id)
+    )
+    
+    if lecturer:
+        query = query.filter(Thesis.lecturer_id == lecturer.id)
+        
+    query = query.order_by(ThesisSubmission.created_at.desc())
+    
+    result = await db.execute(query)
+    rows = result.all()
+    
+    return [
+        {
+            "submission_id": sub.id,
+            "thesis_id": thesis.id,
+            "thesis_title": thesis.title,
+            "student_name": user.full_name,
+            "student_nim": student.nim,
+            "version": sub.version,
+            "ai_feedback": sub.ai_feedback,
+            "lecturer_feedback": sub.lecturer_feedback,
+            "status": thesis.status,
+            "created_at": sub.created_at.isoformat() if sub.created_at else None,
+        }
+        for sub, thesis, student, user in rows
     ]

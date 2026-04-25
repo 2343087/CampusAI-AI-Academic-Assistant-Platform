@@ -32,7 +32,7 @@ class NotificationService:
 
     async def check_academic_risks(self, student_id: int, db: AsyncSession):
         """Analyze academic data and return urgent alerts/risks based on DB data."""
-        from app.models.all import Enrollment, Student, Course
+        from app.models.all import Enrollment, Student, Course, AttendanceRecord, AttendanceSession, Schedule, OrmawaMember
         from sqlalchemy import select, func
         
         alerts = []
@@ -67,6 +67,40 @@ class NotificationService:
                 alerts.append({
                     "level": "warning",
                     "message": f"Progress SKS kamu ({total_sks}) tertinggal untuk semester {student.semester}. Pertimbangkan ambil semester pendek."
+                })
+
+            # Risk 3: Low Attendance
+            stmt_attendance = (
+                select(func.count(AttendanceRecord.id))
+                .filter(AttendanceRecord.student_id == student_id)
+            )
+            total_attendances = (await db.execute(stmt_attendance)).scalar() or 0
+            
+            stmt_sessions = (
+                select(func.count(AttendanceSession.id))
+                .join(Schedule)
+                .join(Course)
+                .join(Enrollment, Enrollment.course_id == Course.id)
+                .filter(Enrollment.student_id == student_id)
+            )
+            total_sessions = (await db.execute(stmt_sessions)).scalar() or 0
+            
+            if total_sessions > 5:
+                attendance_rate = total_attendances / total_sessions
+                if attendance_rate < 0.75:
+                    alerts.append({
+                        "level": "danger",
+                        "message": f"Kehadiran kamu ({int(attendance_rate*100)}%) di bawah 75%. Kamu berisiko tidak bisa ikut UAS!"
+                    })
+
+            # Risk 4: Ormawa Overload
+            stmt_ormawa = select(func.count(OrmawaMember.id)).filter(OrmawaMember.student_id == student_id)
+            ormawa_count = (await db.execute(stmt_ormawa)).scalar() or 0
+            
+            if ormawa_count > 2 and gpa < 3.0:
+                 alerts.append({
+                    "level": "warning",
+                    "message": f"Kamu aktif di {ormawa_count} ORMAWA namun IPK kamu ({round(gpa, 2)}) perlu perhatian. Pertimbangkan manajemen waktu yang lebih baik."
                 })
 
             # Default: KRS Reminder
